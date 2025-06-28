@@ -16,6 +16,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+// Ensure the table includes ip_address and submitted_at
 (async () => {
   const client = await pool.connect();
   await client.query(`
@@ -24,22 +25,26 @@ const pool = new Pool({
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) NOT NULL,
       message TEXT NOT NULL,
+      ip_address VARCHAR(255) NOT NULL,  -- new column for IP address
       submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
   client.release();
-  console.log('✅ Table ensured.');
+  console.log('✅ Table ensured with IP and timestamp.');
 })();
 
 app.post('/submit', async (req, res) => {
   const { name, email, message } = req.body;
+  const ip = req.ip || req.connection.remoteAddress; // Get the user's IP address
+  
   if (!name || !email || !message) {
     return res.status(400).send('All fields are required.');
   }
+
   try {
     await pool.query(
-      'INSERT INTO submissions (name, email, message) VALUES ($1, $2, $3)',
-      [name, email, message]
+      'INSERT INTO submissions (name, email, message, ip_address) VALUES ($1, $2, $3, $4)',
+      [name, email, message, ip]
     );
     res.send('Form submitted successfully!');
   } catch (err) {
